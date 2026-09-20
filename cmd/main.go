@@ -18,6 +18,8 @@ import (
 const (
 	viaCepURL     = "https://viacep.com.br"
 	weatherApiURL = "https://api.weatherapi.com"
+
+	upstreamTimeout = 5 * time.Second
 )
 
 func run() error {
@@ -29,7 +31,7 @@ func run() error {
 		return err
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: upstreamTimeout}
 
 	handler := weather.NewHandler(&weather.NewHandlerOpts{
 		Cities:       weather.ViaCEP{BaseURL: viaCepURL, Client: client},
