@@ -8,26 +8,30 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
-	"github.com/danilotorchio/fc-go-expert-lab-01/internal/weather"
 )
 
 func TestRouter(t *testing.T) {
-	h := NewRouter().Handler(weather.NewHandler(&weather.NewHandlerOpts{}))
+	h := NewRouter().Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(r.PathValue("cep")))
+	}))
 
 	tests := []struct {
 		method, path string
 		status       int
+		body         string
 	}{
-		{http.MethodGet, "/weather/123", http.StatusUnprocessableEntity},
-		{http.MethodPost, "/weather/01001000", http.StatusMethodNotAllowed},
-		{http.MethodGet, "/", http.StatusNotFound},
+		{http.MethodGet, "/weather/01001000", http.StatusOK, "01001000"},
+		{http.MethodPost, "/weather/01001000", http.StatusMethodNotAllowed, ""},
+		{http.MethodGet, "/", http.StatusNotFound, ""},
 	}
 	for _, tt := range tests {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest(tt.method, tt.path, nil))
 		if rec.Code != tt.status {
 			t.Errorf("%s %s = %d, want %d", tt.method, tt.path, rec.Code, tt.status)
+		}
+		if tt.body != "" && rec.Body.String() != tt.body {
+			t.Errorf("%s %s body = %q, want %q", tt.method, tt.path, rec.Body.String(), tt.body)
 		}
 	}
 }
