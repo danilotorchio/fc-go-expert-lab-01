@@ -1,34 +1,53 @@
 package main
 
 import (
-	"errors"
+	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/danilotorchio/fc-go-expert-lab-01/internal/config"
+	"github.com/danilotorchio/fc-go-expert-lab-01/internal/transport"
 	"github.com/danilotorchio/fc-go-expert-lab-01/internal/weather"
 )
 
+const (
+	viaCepURL     = "https://viacep.com.br"
+	weatherApiURL = "https://api.weatherapi.com"
+)
+
 func run() error {
-	key := os.Getenv("WEATHER_API_KEY")
-	if key == "" {
-		return errors.New("WEATHER_API_KEY is required")
-	}
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	mux := http.NewServeMux()
-	mux.Handle("GET /weather/{cep}", weather.Handler{
-		Cities:       weather.ViaCEP{BaseURL: "https://viacep.com.br", Client: client},
-		Temperatures: weather.WeatherAPI{BaseURL: "https://api.weatherapi.com", Key: key, Client: client},
+
+	handler := weather.NewHandler(&weather.NewHandlerOpts{
+		Cities:       weather.ViaCEP{BaseURL: viaCepURL, Client: client},
+		Temperatures: weather.WeatherAPI{BaseURL: weatherApiURL, Key: cfg.WeatherApiKey, Client: client},
 	})
 
-	slog.Info("listening", "port", port)
-	return http.ListenAndServe(":"+port, mux)
+	router := transport.NewRouter()
+
+	server := transport.NewServer(&transport.NewServerOpts{
+		Port:    cfg.Port,
+		Handler: router.Handler(handler),
+	})
+
+	if err := server.Start(ctx, 15*time.Second); err != nil {
+		return fmt.Errorf("server exited with error: %w", err)
+	}
+
+	return nil
 }
 
 func main() {

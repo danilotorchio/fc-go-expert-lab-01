@@ -27,10 +27,11 @@ func (f fakeTemps) CelsiusIn(context.Context, string) (float64, error) { return 
 
 func TestHandler(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.Handle("GET /weather/{cep}", Handler{
+
+	mux.Handle("GET /weather/{cep}", NewHandler(&NewHandlerOpts{
 		Cities:       fakeCities{"01001000": "São Paulo"},
 		Temperatures: fakeTemps(28.5),
-	})
+	}))
 
 	tests := []struct {
 		name, cep string
