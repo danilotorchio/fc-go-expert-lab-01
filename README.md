@@ -20,17 +20,47 @@ Exemplo: `https://cep-weather-458435769570.us-central1.run.app/weather/01001000`
 
 Conversões: `F = C × 1.8 + 32` e `K = C + 273` (valores arredondados em 2 casas).
 
-## Rodando localmente
+## Configuração
 
-Crie uma chave gratuita em https://www.weatherapi.com/signup.aspx e depois:
+Crie uma chave gratuita em https://www.weatherapi.com/signup.aspx e configure o `.env`:
 
 ```bash
 cp .env.example .env   # preencha WEATHER_API_KEY
+```
+
+| Variável | Obrigatória | Padrão |
+|---|---|---|
+| `WEATHER_API_KEY` | sim | — |
+| `PORT` | não | `8080` |
+
+Variáveis já definidas no ambiente têm prioridade sobre o `.env`.
+
+## Rodando localmente com Docker
+
+```bash
 docker compose up --build
 curl localhost:8080/weather/01001000
 ```
 
-Sem Docker: `WEATHER_API_KEY=... go run ./cmd`
+## Rodando localmente sem Docker
+
+Requer Go 1.27+. Execute na raiz do projeto, onde fica o `.env`:
+
+```bash
+go run ./cmd
+curl localhost:8080/weather/01001000
+```
+
+Ou gere o binário:
+
+```bash
+go build -o bin/server ./cmd
+./bin/server
+```
+
+Sem `.env`, passe as variáveis direto: `WEATHER_API_KEY=... PORT=9090 go run ./cmd`.
+
+O servidor encerra de forma graciosa ao receber `Ctrl+C` (SIGINT) ou SIGTERM.
 
 ## Testes
 
@@ -46,7 +76,15 @@ Ou direto com Go:
 go test ./... -v
 ```
 
-Os testes cobrem as conversões de temperatura, os clientes HTTP do ViaCEP/WeatherAPI (com servidores `httptest`) e todos os cenários do handler (200, 404, 422 e 500). Nenhum teste acessa a internet.
+Os testes cobrem:
+
+- conversões de temperatura;
+- clientes HTTP do ViaCEP e da WeatherAPI (com servidores `httptest`);
+- todos os cenários do handler (200, 404, 422 e 500);
+- carregamento de configuração (porta padrão e chave obrigatória);
+- roteamento e ciclo de vida do servidor (graceful shutdown e porta ocupada).
+
+Nenhum teste acessa a internet.
 
 ## Deploy no Cloud Run
 
